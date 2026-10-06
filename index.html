@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MINECRAFT</title>
+    <style>
+        :root {
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+        body { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; background: #000; font-family: Arial, sans-serif; touch-action: manipulation; position: fixed; top: 0; left: 0; }
+
+        #name-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(180deg, #3d2b1a, #2d1d0e, #1a0f04);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1100; transition: opacity 0.4s;
+        }
+        #name-screen.hidden { opacity: 0; pointer-events: none; }
+        .name-title { font-size: clamp(28px, 7vw, 42px); font-weight: bold; color: #fff; text-shadow: 4px 4px 0 #2d5a0f, 6px 6px 0 #1a3a08; margin-bottom: 5px; }
+        .name-subtitle { font-size: clamp(12px, 3vw, 18px); color: #aaa; margin-bottom: 20px; letter-spacing: 2px; }
+        .name-input {
+            width: min(80%, 280px); padding: 12px 16px; font-size: 18px;
+            border: 3px solid #7ec850; border-radius: 8px; background: rgba(0,0,0,0.7);
+            color: #fff; text-align: center; outline: none;
+        }
+        .name-btn {
+            margin-top: 20px; padding: 14px 40px; font-size: 18px; font-weight: bold;
+            color: #fff; background: linear-gradient(180deg, #7ec850, #4a8c20, #2d5a0f);
+            border: 3px solid #1a4a0a; border-radius: 10px; cursor: pointer;
+            letter-spacing: 2px; box-shadow: 0 6px 0 #1a3a08, 0 8px 20px rgba(0,0,0,0.5);
+            transition: 0.1s;
+        }
+        .name-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #1a3a08; }
+
+        #start-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, #3d2b1a, #2d1d0e, #1a0f04); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.4s; }
+        #start-screen.hidden { opacity: 0; pointer-events: none; }
+        .start-title { font-size: clamp(32px, 8vw, 48px); font-weight: bold; color: #fff; text-shadow: 4px 4px 0 #2d5a0f, 6px 6px 0 #1a3a08; margin-bottom: 5px; }
+        .start-subtitle { font-size: clamp(12px, 3vw, 18px); color: #aaa; margin-bottom: 30px; letter-spacing: 2px; }
+        .start-btn { padding: 14px 44px; font-size: clamp(18px, 5vw, 24px); font-weight: bold; color: #fff; background: linear-gradient(180deg, #7ec850, #4a8c20, #2d5a0f); border: 3px solid #1a4a0a; border-radius: 10px; cursor: pointer; letter-spacing: 3px; box-shadow: 0 6px 0 #1a3a08, 0 8px 20px rgba(0,0,0,0.5); transition: 0.1s; }
+        .start-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #1a3a08; }
+
+        #music-select-btn {
+            position: fixed; top: 20px; left: 20px; z-index: 1050;
+            padding: 10px 18px; background: rgba(255,255,255,0.9);
+            border: 2px solid #fff; border-radius: 6px;
+            font-size: 14px; font-weight: bold; color: #000;
+            cursor: pointer; pointer-events: auto; letter-spacing: 1px;
+        }
+        #music-file-input { display: none; }
+
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a0f04; z-index: 999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        #loading-screen.active { display: flex; }
+        .loading-text { color: #e0d5c0; font-size: 20px; margin-bottom: 20px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100%{opacity:0.6;} 50%{opacity:1;} }
+        .progress-bar { width: min(80%, 280px); height: 14px; background: #2a1a0a; border: 2px solid #5c3d1a; border-radius: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4a8c20, #7ec850, #4a8c20); border-radius: 6px; }
+
+        #game-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 1; }
+
+        #crosshair { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 10; pointer-events: none; width: 30px; height: 30px; display: none; }
+        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255,255,255,0.9); }
+        #crosshair::before { width: 2px; height: 100%; left: 50%; top: 0; transform: translateX(-50%); }
+        #crosshair::after { height: 2px; width: 100%; top: 50%; left: 0; transform: translateY(-50%); }
+
+        #dpad {
+            position: fixed; bottom: 20px; left: 20px; z-index: 20;
+            display: none; width: 130px; height: 130px;
+            flex-wrap: wrap; justify-content: center; align-items: center;
+        }
+        .dpad-btn {
+            width: 45px; height: 45px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 0;
+            color: #000;
+            font-weight: bold;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            pointer-events: auto;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.05s;
+        }
+        .dpad-btn:active { background: #fff; }
+        #btn-up { top: 0; left: 50%; transform: translateX(-50%); }
+        #btn-down { bottom: 0; left: 50%; transform: translateX(-50%); }
+        #btn-left { left: 0; top: 50%; transform: translateY(-50%); }
+        #btn-right { right: 0; top: 50%; transform: translateY(-50%); }
+
+        #action-buttons {
+            position: fixed; bottom: 20px; right: 20px; z-index: 20;
+            display: none; flex-direction: column; gap: 8px; align-items: center;
+        }
+        .action-row { display: flex; gap: 8px; }
+        .action-btn {
+            width: 60px; height: 60px; border-radius: 50%;
+            background: rgba(255,255,255,0.9); border: 3px solid rgba(0,0,0,0.5);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-size: 14px; font-weight: bold;
+            color: #333; display: flex; align-items: center; justify-content: center;
+            transition: 0.1s; pointer-events: auto; cursor: pointer; text-align: center;
+        }
+        .action-btn:active { background: rgba(200,200,200,0.9); transform: scale(0.88); }
+        #break-btn { background: rgba(230,180,180,0.9); }
+        #place-btn { background: rgba(180,230,180,0.9); }
+        #jump-btn { background: rgba(200,200,220,0.9); font-size: 28px; }
+        #descend-btn { background: rgba(220,200,220,0.9); display: none; }
+
+        #gamemode-btn {
+            position: fixed; left: 20px; top: 80px; z-index: 20;
+            width: 64px; height: 64px; border-radius: 50%;
+            background: rgba(255,255,255,0.9); border: 3px solid rgba(0,0,0,0.5);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-size: 12px; font-weight: bold;
+            color: #333; display: none; align-items: center; justify-content: center;
+            text-align: center; line-height: 1.2;
+            cursor: pointer; pointer-events: auto; transition: 0.1s;
+        }
+        #gamemode-btn:active { background: rgba(200,200,200,0.9); transform: scale(0.88); }
+
+        #hotbar { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 20; display: none; gap: 5px; background: rgba(0,0,0,0.7); border: 3px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 6px 10px; }
+        .hotbar-slot { width: 70px; height: 48px; border: 2px solid rgba(255,255,255,0.4); border-radius: 4px; background: rgba(30,30,30,0.8); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.15s; position: relative; }
+        .hotbar-slot.selected { border-color: #fff; background: rgba(60,60,60,0.9); transform: translateY(-4px); box-shadow: 0 0 12px rgba(255,255,255,0.6); }
+        .slot-icon { width: 30px; height: 30px; border-radius: 3px; }
+        .slot-name { font-size: 9px; color: #ccc; margin-top: 2px; pointer-events: none; }
+        .selected-tag { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #4a4; color: #fff; font-size: 10px; padding: 1px 4px; border-radius: 4px; display: none; }
+        .hotbar-slot.selected .selected-tag { display: block; }
+
+        #hint-text { position: fixed; top: 10%; left: 50%; transform: translateX(-50%); z-index: 15; color: #fff; font-size: 15px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
+        #hint-text.show { opacity: 1; }
+        #flight-indicator { position: fixed; top: 15%; left: 50%; transform: translateX(-50%); z-index: 25; color: #ffff00; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 2px black; display: none; }
+
+        #coord-display { position: fixed; top: 15px; right: 15px; z-index: 30; color: #fff; font-size: 16px; font-weight: bold; text-shadow: 1px 1px 2px black; pointer-events: none; text-align: right; }
+        #time-display { position: fixed; top: 15px; left: 15px; z-index: 30; color: #fff; font-size: 16px; font-weight: bold; text-shadow: 1px 1px 2px black; pointer-events: none; }
+
+        #log-btn {
+            position: fixed; top: 45px; right: 15px; z-index: 1001;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(255,255,255,0.95); border: 2px solid #000;
+            color: #000; font-weight: bold; font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; pointer-events: auto; line-height: 1;
+        }
+        #log-panel {
+            position: fixed; top: 100px; right: 15px; z-index: 1000;
+            width: 260px; max-height: 220px; overflow-y: auto;
+            background: rgba(0,0,0,0.85); border: 2px solid #fff; border-radius: 6px;
+            padding: 8px; font-size: 12px; color: #0f0; font-family: monospace;
+            display: none; pointer-events: auto;
+        }
+        #log-panel.show { display: block; }
+        .log-entry { margin-bottom: 2px; white-space: pre-wrap; word-break: break-all; }
+
+        #health-bar {
+            position: fixed; bottom: 75px; left: 50%; transform: translateX(-60%);
+            z-index: 25; display: none; gap: 3px;
+        }
+        .heart {
+            width: 20px; height: 20px;
+            background: #ff0000;
+            clip-path: polygon(50% 0%, 100% 35%, 82% 100%, 50% 75%, 18% 100%, 0% 35%);
+        }
+        .heart.half { background: linear-gradient(to right, #ff0000 50%, #555 50%); }
+        .heart.empty { background: #555; }
+
+        #death-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 2000; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+            color: #fff; font-size: 32px; font-weight: bold;
+        }
+        #death-screen button {
+            margin-top: 20px; padding: 12px 30px; font-size: 20px;
+            background: #4caf50; border: none; border-radius: 8px; cursor: pointer; color: #fff; font-weight: bold;
+        }
+
+        @media (orientation: portrait) {
+            #dpad { bottom: 90px; left: 15px; }
+            #action-buttons { bottom: 90px; right: 15px; }
+            #hotbar { bottom: 20px; }
+            #log-btn { top: 10px; right: 10px; }
+            #log-panel { top: 60px; right: 10px; width: 220px; }
+            #gamemode-btn { left: 15px; top: 70px; }
+            #health-bar { bottom: 85px; }
+        }
+    </style>
+</head>
+<body>
+    <audio id="bgm" loop></audio>
+
+    <div id="name-screen">
+        <div class="name-title">MINECRAFT</div>
+        <div class="name-subtitle">xiho Studio</div>
+        <input type="text" class="name-input" id="name-input" placeholder="请输入你的名字" maxlength="12">
+        <button class="name-btn" id="name-confirm-btn">确定</button>
+    </div>
+
+    <div id="start-screen" class="hidden">
+        <div class="start-title">MINECRAFT</div>
+        <div class="start-subtitle">xiho Studio</div>
+        <button class="start-btn" id="start-btn">开 始 游 戏</button>
+        <button id="music-select-btn">选择音频文件</button>
+        <input type="file" id="music-file-input" accept="audio/*">
+    </div>
+
+    <div id="loading-screen">
+        <div class="loading-text">游戏加载中...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div style="color:#8a7a60; margin-top:12px; font-size:13px;" id="loading-tip"></div>
+    </div>
+    <canvas id="game-canvas"></canvas>
+    <div id="crosshair"></div>
+
+    <div id="dpad">
+        <div class="dpad-btn" id="btn-up">前</div>
+        <div class="dpad-btn" id="btn-down">后</div>
+        <div class="dpad-btn" id="btn-left">左</div>
+        <div class="dpad-btn" id="btn-right">右</div>
+    </div>
+
+    <div id="action-buttons">
+        <div class="action-row">
+            <div class="action-btn" id="break-btn">破坏</div>
+            <div class="action-btn" id="place-btn">放置</div>
+        </div>
+        <div class="action-row">
+            <div class="action-btn" id="jump-btn">跳</div>
+            <div class="action-btn" id="descend-btn">降</div>
+        </div>
+    </div>
+    <div id="gamemode-btn">创造<br>模式</div>
+    <div id="hotbar"></div>
+    <div id="hint-text"></div>
+    <div id="flight-indicator">飞行中</div>
+    <div id="coord-display">长:0 宽:0 高:0</div>
+    <div id="time-display"></div>
+    <div id="log-btn">日志</div>
+    <div id="log-panel"></div>
+    <div id="health-bar"></div>
+    <div id="death-screen">
+        <div>你死了</div>
+        <button id="respawn-btn">重 生</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script>
+        (() => {
+            // ---------- 音乐控制 ----------
+            const bgm = document.getElementById('bgm');
+            const musicSelectBtn = document.getElementById('music-select-btn');
+            const musicFileInput = document.getElementById('music-file-input');
+
+            musicSelectBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                musicFileInput.click();
+            });
+
+            musicFileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    bgm.src = url;
+                    bgm.loop = true;
+                    bgm.play().catch(() => {});
+                }
+            });
+
+            // ---------- 日志系统 ----------
+            const logEntries = [];
+            const logPanel = document.getElementById('log-panel');
+            const logBtn = document.getElementById('log-btn');
+            function addLog(msg) {
+                const time = new Date().toLocaleTimeString();
+                const entry = `[${time}] ${msg}`;
+                logEntries.push(entry);
+                const div = document.createElement('div');
+                div.className = 'log-entry';
+                div.textContent = entry;
+                logPanel.appendChild(div);
+                logPanel.scrollTop = logPanel.scrollHeight;
+            }
+            logBtn.addEventListener('click', (e) => { e.stopPropagation(); logPanel.classList.toggle('show'); });
+            addLog('页面加载完成');
+
+            if (typeof THREE === 'undefined') { alert('引擎加载失败'); addLog('错误: Three.js 未加载'); return; }
+            addLog('Three.js 引擎加载成功');
+
+            const $ = id => document.getElementById(id);
+            const nameScreen = $('name-screen');
+            const nameInput = $('name-input');
+            const nameConfirmBtn = $('name-confirm-btn');
+            const startScreen = $('start-screen'), loadingScreen = $('loading-screen'), progressFill = $('progress-fill'), loadingTip = $('loading-tip');
+            const canvas = $('game-canvas'), crosshair = $('crosshair');
+            const placeBtn = $('place-btn'), breakBtn = $('break-btn'), jumpBtn = $('jump-btn'), descendBtn = $('descend-btn');
+            const gamemodeBtn = $('gamemode-btn');
+            const hotbar = $('hotbar'), hintText = $('hint-text'), flightIndicator = $('flight-indicator');
+            const coordDisplay = $('coord-display'), timeDisplay = $('time-display');
+            const healthBar = $('health-bar');
+            const deathScreen = $('death-screen');
+            const respawnBtn = $('respawn-btn');
+            const actionButtons = $('action-buttons');
+            const startBtn = $('start-btn');
+            const dpad = $('dpad');
+            const btnUp = $('btn-up'), btnDown = $('btn-down'), btnLeft = $('btn-left'), btnRight = $('btn-right');
+
+            let playerName = '';
+
+            nameConfirmBtn.addEventListener('click', () => {
+                const name = nameInput.value.trim();
+                if (name === '') {
+                    alert('请输入你的名字！');
+                    return;
+                }
+                playerName = name;
+                addLog(`玩家名称已设置: ${playerName}`);
+                nameScreen.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+            });
+
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x9dd5f0, 50, 90);
+            const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 80);
+            camera.position.set(0, 1.6, 0);
+            camera.rotation.order = 'YXZ';
+            scene.add(new THREE.AmbientLight(0x8899bb, 1.4));
+            const sun = new THREE.DirectionalLight(0xfff8e8, 3.2);
+            sun.position.set(15, 25, 10);
+            sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+            sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 60;
+            sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
+            sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
+            scene.add(sun);
+            scene.add(new THREE.HemisphereLight(0x87CEEB, 0x5c3d1a, 0.6));
+            addLog('场景初始化完成');
+
+            const matGrassSide = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 });
+            const matGrassTop = new THREE.MeshStandardMaterial({ color: 0x7ec850, roughness: 0.7 });
+            const matDirt = new THREE.MeshStandardMaterial({ color: 0x6B4F1A, roughness: 0.9 });
+            const matBedrock = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+            const matStone = new THREE.MeshStandardMaterial({ color: 0x7a7a7a, roughness: 0.7 });
+            const matWoodTop = new THREE.MeshStandardMaterial({ color: 0xc4a46c, roughness: 0.6 });
+            const matWoodSide = new THREE.MeshStandardMaterial({ color: 0x9e7a4c, roughness: 0.75 });
+            const matBrick = new THREE.MeshStandardMaterial({ color: 0xb8403a, roughness: 0.65 });
+            const matSand = new THREE.MeshStandardMaterial({ color: 0xe8d5a0, roughness: 0.8 });
+            const matObsidian = new THREE.MeshStandardMaterial({ color: 0x1a1025, roughness: 0.3, metalness: 0.4 });
+
+            const blockTypes = [
+                { name: '草方块', mats: [matGrassSide, matGrassSide, matGrassTop, matDirt, matGrassSide, matGrassSide], icon: ['#7ec850', '#8B6914'] },
+                { name: '石头', mats: [matStone, matStone, matStone, matStone, matStone, matStone], icon: ['#7a7a7a', '#6a6a6a'] },
+                { name: '木板', mats: [matWoodSide, matWoodSide, matWoodTop, matWoodSide, matWoodSide, matWoodSide], icon: ['#c4a46c', '#9e7a4c'] },
+                { name: '砖块', mats: [matBrick, matBrick, matBrick, matBrick, matBrick, matBrick], icon: ['#b8403a', '#9a3028'] },
+                { name: '沙子', mats: [matSand, matSand, matSand, matSand, matSand, matSand], icon: ['#e8d5a0', '#d4c090'] },
+                { name: '下界合金剑', mats: [matObsidian, matObsidian, matObsidian, matObsidian, matObsidian, matObsidian], icon: ['#4a0e4e', '#8b2fc9'], isSword: true }
+            ];
+            let selectedSlot = 0;
+            const worldBlocks = [];
+            let gameActive = false;
+            let isFlying = false;
+            let flyingAscend = false, flyingDescend = false;
+            const FLY_SPEED = 5.0;
+            let lastJumpTapTime = 0;
+            const DOUBLE_TAP_INTERVAL = 300;
+
+            const MAX_HEALTH = 20;
+            let health = MAX_HEALTH;
+            let isDead = false;
+            let isSurvivalMode = true;
+            const destroyedBlocks = new Set();
+
+            let fallStartY = null;
+            let suffocationTimer = 0;
+            let lastSuffocationDamageTime = 0;
+            const SUFFOCATION_DAMAGE_INTERVAL = 6000;
+
+            const DIRT_LAYERS = 8;
+            const BEDROCK_Y = -(DIRT_LAYERS + 1);
+
+            function createBlock(x, y, z, mats, extraData = {}) {
+                const geo = new THREE.BoxGeometry(1, 1, 1);
+                const mesh = new THREE.Mesh(geo, mats);
+                mesh.position.set(x, y, z);
+                mesh.castShadow = true; mesh.receiveShadow = true;
+                mesh.userData = { pos: new THREE.Vector3(x, y, z), breakable: true, ...extraData };
+                return mesh;
+            }
+
+            function cleanWorld() {
+                while(worldBlocks.length > 0) {
+                    const b = worldBlocks.pop();
+                    scene.remove(b);
+                }
+                destroyedBlocks.clear();
+            }
+
+            const INITIAL_HALF = 7;
+            let initialPlatformGenerated = false;
+
+            function generateInitialPlatform() {
+                if (initialPlatformGenerated) return;
+                const half = INITIAL_HALF;
+                for (let x = -half; x <= half; x++) {
+                    for (let z = -half; z <= half; z++) {
+                        const grassBlock = createBlock(x, 0, z, blockTypes[0].mats, { undeletable: false, breakable: true });
+                        scene.add(grassBlock); worldBlocks.push(grassBlock);
+                        for (let y = -1; y >= -DIRT_LAYERS; y--) {
+                            const dirtBlock = createBlock(x, y, z, [matDirt,matDirt,matDirt,matDirt,matDirt,matDirt], { undeletable: false, breakable: true });
+                            scene.add(dirtBlock); worldBlocks.push(dirtBlock);
+                        }
+                        const bedrockBlock = createBlock(x, BEDROCK_Y, z, [matBedrock,matBedrock,matBedrock,matBedrock,matBedrock,matBedrock], { undeletable: true, breakable: false });
+                        scene.add(bedrockBlock); worldBlocks.push(bedrockBlock);
+                    }
+                }
+                initialPlatformGenerated = true;
+                addLog(`玩家 ${playerName} 进入世界，初始平台已生成（10层）`);
+            }
+
+            const VISIBLE_RADIUS = 8;
+            let currentCenterX = 0, currentCenterZ = 0;
+
+            function generateAround(cx, cz) {
+                const minX = Math.floor(cx - VISIBLE_RADIUS);
+                const maxX = Math.floor(cx + VISIBLE_RADIUS);
+                const minZ = Math.floor(cz - VISIBLE_RADIUS);
+                const maxZ = Math.floor(cz + VISIBLE_RADIUS);
+                for (let x = minX; x <= maxX; x++) {
+                    for (let z = minZ; z <= maxZ; z++) {
+                        for (let y = 0; y >= BEDROCK_Y; y--) {
+                            const key = `${x},${y},${z}`;
+                            if (destroyedBlocks.has(key)) continue;
+                            const exists = worldBlocks.some(b => b.position.x === x && b.position.z === z && b.position.y === y);
+                            if (!exists) {
+                                let mats;
+                                let undeletable = false;
+                                if (y === 0) {
+                                    mats = blockTypes[0].mats;
+                                } else if (y >= -DIRT_LAYERS) {
+                                    mats = [matDirt,matDirt,matDirt,matDirt,matDirt,matDirt];
+                                } else {
+                                    mats = [matBedrock,matBedrock,matBedrock,matBedrock,matBedrock,matBedrock];
+                                    undeletable = true;
+                                }
+                                const block = createBlock(x, y, z, mats, { undeletable, breakable: !undeletable });
+                                scene.add(block); worldBlocks.push(block);
+                            }
+                        }
+                    }
+                }
+                for (let i = worldBlocks.length-1; i >= 0; i--) {
+                    const b = worldBlocks[i];
+                    if (b.userData.undeletable || b.userData.placedByPlayer) continue;
+                    if (b.position.x < minX-2 || b.position.x > maxX+2 || b.position.z < minZ-2 || b.position.z > maxZ+2) {
+                        scene.remove(b); worldBlocks.splice(i,1);
+                    }
+                }
+                currentCenterX = cx; currentCenterZ = cz;
+            }
+
+            function updateTerrain() {
+                const cx = Math.round(camera.position.x);
+                const cz = Math.round(camera.position.z);
+                if (cx !== currentCenterX || cz !== currentCenterZ) generateAround(cx, cz);
+            }
+
+            function die(reason = '') {
+                isDead = true;
+                gameActive = false;
+                deathScreen.style.display = 'flex';
+                addLog(`玩家 ${playerName} 死亡：${reason}`);
+            }
+
+            function respawn() {
+                cleanWorld();
+                deathScreen.style.display = 'none';
+                canvas.style.display = 'none'; crosshair.style.display = 'none';
+                dpad.style.display = 'none'; actionButtons.style.display = 'none';
+                hotbar.style.display = 'none'; gamemodeBtn.style.display = 'none';
+                healthBar.style.display = 'none';
+                flightIndicator.style.display = 'none'; descendBtn.style.display = 'none';
+                gameActive = false;
+                isDead = false;
+                isFlying = false;
+                flyingAscend = false; flyingDescend = false;
+                health = MAX_HEALTH;
+                updateHealthBar();
+                startScreen.classList.remove('hidden');
+                addLog('返回开始界面');
+            }
+
+            function updateHealthBar() {
+                healthBar.innerHTML = '';
+                const full = Math.floor(health/2);
+                const half = health%2===1;
+                for (let i=0; i<full; i++) { const h=document.createElement('div'); h.className='heart'; healthBar.appendChild(h); }
+                if (half) { const h=document.createElement('div'); h.className='heart half'; healthBar.appendChild(h); }
+                for (let i=0; i < (MAX_HEALTH - health)/2; i++) { const h=document.createElement('div'); h.className='heart empty'; healthBar.appendChild(h); }
+            }
+
+            function applyDamage(amount, reason) {
+                if (!isSurvivalMode || isDead) return;
+                health = Math.max(0, health - amount);
+                updateHealthBar();
+                addLog(`玩家 ${playerName} 受到${amount}点伤害 (${reason}) 生命值: ${health}`);
+                showHint(`⚠ ${reason}！`);
+                cameraShake(0.1, 150);
+                if (health <= 0) die(reason);
+            }
+
+            function isEnclosed() {
+                const pos = camera.position.clone();
+                pos.y -= 0.8;
+                const directions = [
+                    new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0),
+                    new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1),
+                    new THREE.Vector3(0,1,0), new THREE.Vector3(0,-1,0)
+                ];
+                for (const dir of directions) {
+                    const checkPos = pos.clone().add(dir);
+                    const blockExists = worldBlocks.some(b => 
+                        Math.abs(b.position.x - Math.round(checkPos.x)) < 0.3 &&
+                        Math.abs(b.position.y - Math.round(checkPos.y)) < 0.3 &&
+                        Math.abs(b.position.z - Math.round(checkPos.z)) < 0.3
+                    );
+                    if (!blockExists) return false;
+                }
+                return true;
+            }
+
+            const raycaster = new THREE.Raycaster();
+            function getTargetBlock() {
+                raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+                const hits = raycaster.intersectObjects(worldBlocks);
+                if (hits.length) return { object:hits[0].object, point:hits[0].point.clone(), normal:hits[0].face.normal.clone(), distance:hits[0].distance };
+                return null;
+            }
+
+            function placeBlock() {
+                if (blockTypes[selectedSlot].isSword) return;
+                const target = getTargetBlock();
+                if (!target || target.distance > 7) return;
+                const pos = target.object.position.clone().add(target.normal);
+                if (camera.position.distanceTo(pos) < 0.8) return;
+                if (worldBlocks.some(b => b.position.distanceTo(pos) < 0.3)) return;
+                const block = createBlock(Math.round(pos.x), Math.round(pos.y), Math.round(pos.z), blockTypes[selectedSlot].mats, { placedByPlayer: true });
+                scene.add(block); worldBlocks.push(block);
+                addLog(`玩家 ${playerName} 放置 ${blockTypes[selectedSlot].name} 于 (${Math.round(pos.x)},${Math.round(pos.y)},${Math.round(pos.z)})`);
+                showHint('✓ 放置 ' + blockTypes[selectedSlot].name);
+            }
+
+            function destroyBlock() {
+                const target = getTargetBlock();
+                if (!target || target.distance > 6.5) return;
+                const block = target.object;
+                if (block.userData.undeletable) {
+                    if (isSurvivalMode) {
+                        showHint('⚠ 不可破坏');
+                        return;
+                    }
+                }
+                const key = `${block.position.x},${block.position.y},${block.position.z}`;
+                destroyedBlocks.add(key);
+                scene.remove(block);
+                const idx = worldBlocks.indexOf(block);
+                if (idx !== -1) worldBlocks.splice(idx, 1);
+                addLog(`玩家 ${playerName} 破坏方块 (${block.position.x},${block.position.y},${block.position.z})`);
+                showHint('🗑 已破坏');
+            }
+
+            function showHint(msg) {
+                hintText.textContent = msg; hintText.classList.add('show');
+                clearTimeout(hintText._t); hintText._t = setTimeout(() => hintText.classList.remove('show'), 1500);
+            }
+
+            function cameraShake(intensity, duration) {
+                const startTime = Date.now();
+                const originalPos = camera.position.clone();
+                function shake() {
+                    const elapsed = Date.now() - startTime;
+                    if (elapsed < duration) {
+                        camera.position.x += (Math.random()-0.5)*intensity*2;
+                        camera.position.y += (Math.random()-0.5)*intensity*2;
+                        requestAnimationFrame(() => {
+                            camera.position.x = originalPos.x;
+                            camera.position.y = originalPos.y;
+                            shake();
+                        });
+                    }
+                }
+                shake();
+            }
+
+            const playerH = 1.6, gravity = -16, jumpPower = 6.2, moveSpeed = 3.2;
+            let playerVel = new THREE.Vector3(); let onGround = true;
+            const input = { fwd:0, rgt:0, yaw:0, pitch:-0.2 };
+
+            const keysPressed = { up: false, down: false, left: false, right: false };
+
+            function updateInputFromKeys() {
+                input.fwd = (keysPressed.up ? 1 : 0) - (keysPressed.down ? 1 : 0);
+                input.rgt = (keysPressed.right ? 1 : 0) - (keysPressed.left ? 1 : 0);
+            }
+
+            function bindDirectionButton(btn, direction) {
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!gameActive) return;
+                    keysPressed[direction] = true;
+                    updateInputFromKeys();
+                });
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    keysPressed[direction] = false;
+                    updateInputFromKeys();
+                });
+                btn.addEventListener('touchcancel', (e) => {
+                    keysPressed[direction] = false;
+                    updateInputFromKeys();
+                });
+            }
+
+            bindDirectionButton(btnUp, 'up');
+            bindDirectionButton(btnDown, 'down');
+            bindDirectionButton(btnLeft, 'left');
+            bindDirectionButton(btnRight, 'right');
+
+            function updatePlayer(dt) {
+                camera.rotation.y = input.yaw;
+                camera.rotation.x = Math.max(-1.5, Math.min(1.5, input.pitch));
+                const fwdVec = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); fwdVec.y=0; fwdVec.normalize();
+                const rgtVec = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); rgtVec.y=0; rgtVec.normalize();
+                let moveX = (fwdVec.x * input.fwd + rgtVec.x * input.rgt) * moveSpeed * dt;
+                let moveZ = (fwdVec.z * input.fwd + rgtVec.z * input.rgt) * moveSpeed * dt;
+                const prevY = camera.position.y;
+
+                if (isFlying) {
+                    camera.position.x += moveX; camera.position.z += moveZ;
+                    let vertical = 0;
+                    if (flyingAscend) vertical += FLY_SPEED * dt;
+                    if (flyingDescend) vertical -= FLY_SPEED * dt;
+                    camera.position.y += vertical;
+                    playerVel.y = 0;
+                    onGround = false;
+                    fallStartY = null;
+                    if (flyingDescend) {
+                        const foot = camera.position.clone(); foot.y -= playerH;
+                        raycaster.set(foot, new THREE.Vector3(0,-1,0));
+                        const hits = raycaster.intersectObjects(worldBlocks);
+                        if (hits.length && hits[0].distance < 0.7) toggleFlight();
+                    }
+                } else {
+                    const newX = camera.position.x + moveX, newZ = camera.position.z + moveZ;
+                    let canX=true, canZ=true;
+                    for (const b of worldBlocks) {
+                        if (Math.abs(newX - b.position.x) < 0.55 && Math.abs(camera.position.z - b.position.z) < 0.55 && Math.abs(camera.position.y - b.position.y) < 1.0) canX = false;
+                        if (Math.abs(camera.position.x - b.position.x) < 0.55 && Math.abs(newZ - b.position.z) < 0.55 && Math.abs(camera.position.y - b.position.y) < 1.0) canZ = false;
+                    }
+                    if (canX) camera.position.x += moveX;
+                    if (canZ) camera.position.z += moveZ;
+
+                    playerVel.y += gravity * dt;
+                    camera.position.y += playerVel.y * dt;
+
+                    let groundY = null;
+                    for (const b of worldBlocks) {
+                        if (Math.abs(camera.position.x - b.position.x) < 0.55 && Math.abs(camera.position.z - b.position.z) < 0.55) {
+                            const top = b.position.y + 0.5;
+                            if (top <= camera.position.y - playerH + 0.05) { if (groundY === null || top > groundY) groundY = top; }
+                        }
+                    }
+                    const wasOnGround = onGround;
+                    if (groundY !== null && playerVel.y <= 0) {
+                        const landedY = groundY + playerH;
+                        if (!wasOnGround && fallStartY !== null) {
+                            const fallDistance = fallStartY - landedY;
+                            if (fallDistance >= 10) {
+                                applyDamage(MAX_HEALTH, '高空坠落');
+                            } else if (fallDistance >= 5) {
+                                applyDamage(6, '坠落');
+                            }
+                        }
+                        camera.position.y = landedY;
+                        playerVel.y = 0;
+                        onGround = true;
+                        fallStartY = null;
+                    } else {
+                        if (wasOnGround && playerVel.y < -1) {
+                            fallStartY = camera.position.y;
+                        }
+                        onGround = false;
+                    }
+                }
+
+                const playerFeet = camera.position.y - playerH;
+                if (playerFeet <= -15) {
+                    die('坠落虚空');
+                }
+
+                if (isSurvivalMode && !isDead && !isFlying) {
+                    if (isEnclosed()) {
+                        suffocationTimer += dt;
+                        if (suffocationTimer >= 60) {
+                            if (Date.now() - lastSuffocationDamageTime >= SUFFOCATION_DAMAGE_INTERVAL) {
+                                applyDamage(2, '窒息');
+                                lastSuffocationDamageTime = Date.now();
+                            }
+                        }
+                    } else {
+                        suffocationTimer = 0;
+                    }
+                } else {
+                    suffocationTimer = 0;
+                }
+
+                updateTerrain();
+            }
+
+            function performJump() { if (!gameActive || isFlying) return; if (onGround) { playerVel.y = jumpPower; onGround = false; } }
+            function toggleFlight() {
+                if (!gameActive) return;
+                if (isSurvivalMode) {
+                    showHint('❌ 生存模式无法飞行');
+                    return;
+                }
+                isFlying = !isFlying;
+                if (isFlying) {
+                    playerVel.y=0; flyingAscend=false; flyingDescend=false;
+                    flightIndicator.style.display='block'; descendBtn.style.display='flex';
+                    addLog(`玩家 ${playerName} 进入飞行模式`);
+                    showHint('🕊 进入飞行模式');
+                } else {
+                    flightIndicator.style.display='none'; descendBtn.style.display='none';
+                    flyingAscend=false; flyingDescend=false;
+                    addLog(`玩家 ${playerName} 退出飞行模式`);
+                    showHint('🛬 退出飞行模式');
+                }
+            }
+            function onJumpTouch(e) { e.preventDefault(); e.stopPropagation(); if (!gameActive) return; const now=Date.now(); if (now-lastJumpTapTime < DOUBLE_TAP_INTERVAL) { toggleFlight(); lastJumpTapTime=0; } else { lastJumpTapTime=now; if (isFlying) flyingAscend=true; else performJump(); } }
+            function onJumpRelease(e) { e.preventDefault(); if (isFlying) flyingAscend=false; }
+            function onDescendTouch(e) { e.preventDefault(); e.stopPropagation(); if (gameActive && isFlying) flyingDescend=true; }
+            function onDescendRelease(e) { e.preventDefault(); flyingDescend=false; }
+            jumpBtn.addEventListener('touchstart', onJumpTouch);
+            jumpBtn.addEventListener('touchend', onJumpRelease);
+            jumpBtn.addEventListener('touchcancel', onJumpRelease);
+            descendBtn.addEventListener('touchstart', onDescendTouch);
+            descendBtn.addEventListener('touchend', onDescendRelease);
+            descendBtn.addEventListener('touchcancel', onDescendRelease);
+
+            gamemodeBtn.addEventListener('click', () => {
+                isSurvivalMode = !isSurvivalMode;
+                gamemodeBtn.innerHTML = isSurvivalMode ? '创造<br>模式' : '生存<br>模式';
+                healthBar.style.display = isSurvivalMode ? 'flex' : 'none';
+                if (isSurvivalMode && isFlying) {
+                    toggleFlight();
+                }
+                showHint(isSurvivalMode ? '⚔️ 生存模式' : '🛡️ 创造模式');
+                addLog(`玩家 ${playerName} 切换至${isSurvivalMode ? '生存' : '创造'}模式`);
+            });
+
+            placeBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); if(!gameActive)return; if(blockTypes[selectedSlot].isSword) { /* 剑攻击 */ } else placeBlock(); });
+            breakBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); if(gameActive) destroyBlock(); });
+
+            let viewId = null, viewStart = {x:0,y:0}, viewMoved = false;
+            function inside(el,x,y,m=15){ const r=el.getBoundingClientRect(); return x>r.left-m&&x<r.right+m&&y>r.top-m&&y<r.bottom+m; }
+            canvas.addEventListener('touchstart', e => {
+                if(!gameActive)return;
+                for(const t of e.changedTouches){
+                    if(inside(dpad,t.clientX,t.clientY)||inside(actionButtons,t.clientX,t.clientY)||inside(hotbar,t.clientX,t.clientY)||inside(gamemodeBtn,t.clientX,t.clientY)) continue;
+                    if(viewId===null){ viewId=t.identifier; viewStart={x:t.clientX,y:t.clientY}; viewMoved=false; }
+                }
+            });
+            canvas.addEventListener('touchmove', e => {
+                if(!gameActive)return;
+                for(const t of e.changedTouches){
+                    if(t.identifier===viewId){
+                        const dx=t.clientX-viewStart.x, dy=t.clientY-viewStart.y;
+                        if(Math.abs(dx)>3||Math.abs(dy)>3) viewMoved=true;
+                        if(viewMoved){ input.yaw-=dx*0.004; input.pitch-=dy*0.004; viewStart={x:t.clientX,y:t.clientY}; }
+                    }
+                }
+            });
+            canvas.addEventListener('touchend', e => { for(const t of e.changedTouches) if(t.identifier===viewId){ viewId=null; viewMoved=false; } });
+            canvas.addEventListener('touchcancel', ()=>{ viewId=null; viewMoved=false; });
+
+            function buildHotbarUI(){
+                hotbar.innerHTML='';
+                blockTypes.forEach((bt,i)=>{
+                    const slot=document.createElement('div');
+                    slot.className='hotbar-slot'+(i===selectedSlot?' selected':'');
+                    slot.innerHTML=`<div class="slot-icon" style="background:linear-gradient(135deg,${bt.icon[0]} 50%,${bt.icon[1]} 50%)"></div><span class="slot-name">${bt.name}</span><div class="selected-tag">已选</div>`;
+                    slot.addEventListener('pointerdown', e=>{ e.preventDefault(); e.stopPropagation(); selectedSlot=i; document.querySelectorAll('.hotbar-slot').forEach((s,j)=>s.classList.toggle('selected',j===i)); });
+                    hotbar.appendChild(slot);
+                });
+            }
+
+            function updateTimeDisplay() {
+                const now = new Date();
+                let hours = now.getHours();
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+                timeDisplay.textContent = `${hours}:${minutes} ${ampm}`;
+            }
+            setInterval(updateTimeDisplay, 1000);
+            updateTimeDisplay();
+
+            let lastTime = performance.now();
+            function loop(now){
+                requestAnimationFrame(loop);
+                const dt = Math.min(0.05, (now-lastTime)/1000);
+                lastTime=now;
+                if (!gameActive) { renderer.render(scene, camera); return; }
+                if (isDead) { renderer.render(scene, camera); return; }
+                updatePlayer(dt);
+                const lx=Math.round(camera.position.x), lz=Math.round(camera.position.z), ly=Math.floor(camera.position.y-playerH);
+                coordDisplay.textContent=`长:${lx} 宽:${lz} 高:${ly}`;
+                renderer.render(scene, camera);
+            }
+
+            function simulateLoading(){
+                return new Promise(resolve=>{
+                    let p=0; const tips=['生成基岩层','铺设泥土','种下草方块','准备就绪'];
+                    const timer=setInterval(()=>{ p+=2; if(p>=100){ p=100; progressFill.style.width='100%'; loadingTip.textContent=tips[3]; clearInterval(timer); setTimeout(resolve,300); } else { progressFill.style.width=p+'%'; loadingTip.textContent=tips[Math.min(Math.floor(p/25),3)]; } },30);
+                });
+            }
+
+            async function startGame(){
+                startScreen.classList.add('hidden');
+                loadingScreen.classList.add('active'); progressFill.style.width='0%';
+                addLog(`玩家 ${playerName} 开始游戏`);
+                await simulateLoading();
+                try {
+                    cleanWorld();
+                    initialPlatformGenerated = false;
+                    generateInitialPlatform();
+                    generateAround(0,0);
+                    buildHotbarUI();
+                    updateHealthBar();
+                    loadingScreen.classList.remove('active');
+                    canvas.style.display='block'; crosshair.style.display='block';
+                    dpad.style.display='flex'; actionButtons.style.display='flex';
+                    hotbar.style.display='flex'; gamemodeBtn.style.display='flex';
+                    healthBar.style.display = isSurvivalMode ? 'flex' : 'none';
+                    camera.position.set(0,1.6,0); playerVel.set(0,0,0); onGround=true;
+                    input.yaw=0; input.pitch=-0.2; input.fwd=0; input.rgt=0;
+                    isFlying=false; flightIndicator.style.display='none'; descendBtn.style.display='none';
+                    isSurvivalMode = true; gamemodeBtn.innerHTML = '创造<br>模式';
+                    gameActive=true; lastTime=performance.now();
+                    addLog(`游戏启动成功，玩家 ${playerName} 进入生存模式`);
+                    showHint(`🎮 ${playerName} 加入了游戏`);
+                } catch (e) {
+                    addLog('初始化错误: ' + e.message);
+                    alert('初始化失败');
+                    loadingScreen.classList.remove('active');
+                    startScreen.classList.remove('hidden');
+                }
+            }
+
+            startBtn.addEventListener('click', startGame);
+            startBtn.addEventListener('touchend', e=>{ e.preventDefault(); startGame(); });
+            respawnBtn.addEventListener('click', respawn);
+            window.addEventListener('resize', ()=>{ renderer.setSize(window.innerWidth,window.innerHeight); camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
+            requestAnimationFrame(loop);
+            addLog('开始渲染循环');
+        })();
+    </script>
+</body>
+</html>
